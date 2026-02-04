@@ -25,14 +25,15 @@ FROM base AS production
 
 WORKDIR /app
 
+# Copy package files and install production dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
+
 # Copy built application from builder
 COPY --from=builder /app/.output /app/.output
-
-# Copy sql.js wasm file to /app root
-COPY --from=builder /app/node_modules/sql.js/dist/sql-wasm.wasm /app/sql-wasm.wasm
     
 # Create .data directory for SQLite
-RUN mkdir -p /app/.data && chown -R node:node /app/.data /app/sql-wasm.wasm
+RUN mkdir -p /app/.data && chown -R node:node /app/.data /app/node_modules
 
 # Use non-root user
 USER node

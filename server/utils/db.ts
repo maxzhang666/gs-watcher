@@ -1,23 +1,13 @@
-import initSqlJs from 'sql.js'
+import Database from 'better-sqlite3'
 import { consola } from 'consola'
 import path from 'path'
 import fs from 'fs'
-import { fileURLToPath } from 'url'
 
-let db: any = null
-let SQL: any = null
+let db: Database.Database | null = null
 
-export async function getDatabase(): Promise<any> {
+export function getDatabase(): Database.Database {
   if (db) {
     return db
-  }
-
-  // Initialize SQL.js
-  if (!SQL) {
-    // In production, wasm file is copied to /app root
-    const wasmPath = path.join(process.cwd(), 'sql-wasm.wasm')
-    const wasmBinary = fs.readFileSync(wasmPath)
-    SQL = await initSqlJs({ wasmBinary })
   }
 
   // Ensure .data directory exists
@@ -29,13 +19,7 @@ export async function getDatabase(): Promise<any> {
   const dbPath = path.join(dataDir, 'prices.db')
   consola.info(`Initializing database at ${dbPath}`)
 
-  // Load existing database or create new one
-  if (fs.existsSync(dbPath)) {
-    const buffer = fs.readFileSync(dbPath)
-    db = new SQL.Database(buffer)
-  } else {
-    db = new SQL.Database()
-  }
+  db = new Database(dbPath)
   
   initializeTables()
   
@@ -44,22 +28,11 @@ export async function getDatabase(): Promise<any> {
   return db
 }
 
-export function saveDatabase(): void {
-  if (!db) return
-  
-  const dataDir = path.resolve(process.cwd(), '.data')
-  const dbPath = path.join(dataDir, 'prices.db')
-  
-  const data = db.export()
-  const buffer = Buffer.from(data)
-  fs.writeFileSync(dbPath, buffer)
-}
-
 function initializeTables(): void {
   if (!db) return
   
   // Create price_history table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS price_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       symbol TEXT NOT NULL,
@@ -72,13 +45,13 @@ function initializeTables(): void {
   `)
   
   // Create index for efficient queries
-  db.run(`
+  db.exec(`
     CREATE INDEX IF NOT EXISTS idx_symbol_time 
     ON price_history(symbol, created_at)
   `)
   
   // Create alert_logs table for cooldown tracking
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS alert_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       alert_type TEXT NOT NULL,
@@ -94,21 +67,15 @@ function initializeTables(): void {
 export function getRecentPrices(symbol: string, limit: number = 5): Array<{ price: number, created_at: number }> {
   if (!db) return []
   
-  const result = db.exec(`
+  const stmt = db.prepare(`
     SELECT price, created_at 
     FROM price_history 
-    WHERE symbol = '${symbol}' 
+    WHERE symbol = ? 
     ORDER BY created_at DESC 
-    LIMIT ${limit}
+    LIMIT ?
   `)
   
-  if (result.length === 0) return []
-  
-  const rows = result[0].values
-  return rows.map((row: any) => ({
-    price: row[0],
-    created_at: row[1]
-  }))
+  return stmt.all(symbol, limit) as Array<{ price: number, created_at: number }>
 }
 
 export function getTodayRange(symbol: string): { max: number | null, min: number | null } {
@@ -121,18 +88,15 @@ export function getTodayRange(symbol: string): { max: number | null, min: number
   todayStart.setUTCHours(0, 0, 0, 0)
   const todayStartTimestamp = todayStart.getTime() - utc8Offset
   
-  const result = db.exec(`
+  const stmt = db.prepare(`
     SELECT MAX(price) as max, MIN(price) as min
     FROM price_history
-    WHERE symbol = '${symbol}' AND created_at >= ${todayStartTimestamp}
+    WHERE symbol = ? AND created_at >= ?
   `)
   
-  if (result.length === 0 || result[0].values.length === 0) {
-    return { max: null, min: null }
-  }
+  const result = stmt.get(symbol, todayStartTimestamp) as { max: number | null, min: number | null } | undefined
   
-  const row = result[0].values[0]
-  return { max: row[0], min: row[1] }
+  return result || { max: null, min: null }
 }
 
 export function checkAlertCooldown(
@@ -142,18 +106,19 @@ export function checkAlertCooldown(
 ): boolean {
   if (!db) return true
   
-  const result = db.exec(`
+  const stmt = db.prepare(`
     SELECT last_sent_at 
     FROM alert_logs 
-    WHERE alert_type = '${alertType}' AND symbol = '${symbol}'
+    WHERE alert_type = ? AND symbol = ?
   `)
   
-  if (result.length === 0 || result[0].values.length === 0) {
+  const result = stmt.get(alertType, symbol) as { last_sent_at: number } | undefined
+  
+  if (!result) {
     return true // No record, can send
   }
   
-  const lastSentAt = result[0].values[0][0]
-  const timeSinceLastAlert = Date.now() - lastSentAt
+  const timeSinceLastAlert = Date.now() - result.last_sent_at
   return timeSinceLastAlert >= cooldownMs
 }
 
@@ -167,60 +132,56 @@ export function insertPrice(record: {
 }): void {
   if (!db) return
   
-  db.run(`
+  const stmt = db.prepare(`
     INSERT INTO price_history (symbol, price, price_open, price_high, price_low, created_at)
-    VALUES (
-      '${record.symbol}',
-      ${record.price},
-      ${record.price_open},
-      ${record.price_high},
-      ${record.price_low},
-      ${record.created_at}
-    )
+    VALUES (?, ?, ?, ?, ?, ?)
   `)
   
-  saveDatabase()
+  stmt.run(
+    record.symbol,
+    record.price,
+    record.price_open,
+    record.price_high,
+    record.price_low,
+    record.created_at
+  )
 }
 
 export function updateAlertLog(alertType: string, symbol: string): void {
   if (!db) return
   
-  db.run(`
+  const stmt = db.prepare(`
     INSERT OR REPLACE INTO alert_logs (alert_type, symbol, last_sent_at)
-    VALUES ('${alertType}', '${symbol}', ${Date.now()})
+    VALUES (?, ?, ?)
   `)
   
-  saveDatabase()
+  stmt.run(alertType, symbol, Date.now())
 }
 
 export function getRecordCount(): number {
   if (!db) return 0
   
-  const result = db.exec('SELECT COUNT(*) as count FROM price_history')
+  const stmt = db.prepare('SELECT COUNT(*) as count FROM price_history')
+  const result = stmt.get() as { count: number }
   
-  if (result.length === 0 || result[0].values.length === 0) {
-    return 0
-  }
-  
-  return result[0].values[0][0] as number
+  return result.count
 }
 
-export async function getAllPrices(): Promise<Array<{ symbol: string, price: number, timestamp: string }>> {
-  const database = await getDatabase()
+export function getAllPrices(): Array<{ symbol: string, price: number, timestamp: string }> {
+  const database = getDatabase()
   
-  const result = database.exec(`
+  const stmt = database.prepare(`
     SELECT symbol, price, created_at 
     FROM price_history 
     ORDER BY created_at DESC 
     LIMIT 200
   `)
   
-  if (result.length === 0) return []
+  const rows = stmt.all() as Array<{ symbol: string, price: number, created_at: number }>
   
-  const rows = result[0].values
-  return rows.map((row: any) => ({
-    symbol: row[0],
-    price: row[1],
-    timestamp: new Date(row[2]).toISOString()
+  return rows.map(row => ({
+    symbol: row.symbol,
+    price: row.price,
+    timestamp: new Date(row.created_at).toISOString()
   }))
 }

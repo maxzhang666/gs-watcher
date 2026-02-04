@@ -27,14 +27,8 @@ export default defineNuxtConfig({
   
   nitro: {
     externals: {
-      inline: ['sql.js']
-    },
-    publicAssets: [
-      {
-        baseURL: 'sql.js',
-        dir: 'node_modules/sql.js/dist'
-      }
-    ]
+      external: ['better-sqlite3']
+    }
   },
   
   runtimeConfig: {
