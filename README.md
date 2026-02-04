@@ -201,7 +201,6 @@ docker-compose up -d
 ### 2. 数据源异常
 - 系统会在连续5次抓取失败后发送预警
 - 检查网络连接
-- 验证数据源 URL: https://www.guojijinjia.com/d/gold.js
 
 ### 3. 数据库错误
 - 确保 `.data` 目录有写权限
