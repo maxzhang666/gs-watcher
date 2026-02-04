@@ -2,6 +2,7 @@ import initSqlJs from 'sql.js'
 import { consola } from 'consola'
 import path from 'path'
 import fs from 'fs'
+import { fileURLToPath } from 'url'
 
 let db: any = null
 let SQL: any = null
@@ -13,7 +14,11 @@ export async function getDatabase(): Promise<any> {
 
   // Initialize SQL.js
   if (!SQL) {
-    SQL = await initSqlJs()
+    // In production, wasm file is in node_modules/sql.js/dist
+    const wasmBinary = fs.readFileSync(
+      path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm')
+    )
+    SQL = await initSqlJs({ wasmBinary })
   }
 
   // Ensure .data directory exists
