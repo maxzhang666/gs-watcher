@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark"> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold & Silver Monitor - Dual Theme</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // 配置 Tailwind 的深色模式策略
+        tailwind.config = {
+            darkMode: 'class', // 手动切换 class
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* 呼吸灯动画 */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        .animate-pulse-slow { animation: pulse-glow 3s infinite ease-in-out; }
+
+        /* 切换按钮的过渡动画 */
+        .theme-toggle-icon { transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .rotate-icon { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 dark:bg-[#0d0d0d] dark:text-white h-screen flex flex-col overflow-hidden selection:bg-yellow-500/30">
+
+    <header class="bg-white/80 dark:bg-[#121212] backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-6 py-3 flex items-center justify-between z-30 relative transition-colors duration-300 shadow-sm dark:shadow-none">
+        <div class="hidden md:flex items-center gap-2 text-gray-400 dark:text-gray-500 font-bold tracking-widest text-xs">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            CNY_MARKET_FOCUS
+        </div>
+
+        <div class="flex gap-4 md:gap-6 mx-auto md:mx-0 text-xs md:text-sm font-mono text-gray-600 dark:text-gray-400" id="clock-container">
+            <div class="flex items-center gap-2 opacity-50"><span class="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500"></span><span id="clock-ny">NY --:--</span></div>
+            <div class="flex items-center gap-2 font-bold text-gray-800 dark:text-gray-200"><span class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-green-500/50"></span><span id="clock-london">LDN --:--</span></div>
+            <div class="flex items-center gap-2 font-bold text-gray-800 dark:text-gray-200"><span class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-green-500/50"></span><span id="clock-bj">BJ --:--</span></div>
+        </div>
+
+        <button onclick="toggleTheme()" class="ml-4 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors focus:outline-none" title="Toggle Theme">
+            <svg id="icon-sun" class="w-5 h-5 text-orange-500 hidden dark:block theme-toggle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <svg id="icon-moon" class="w-5 h-5 text-gray-600 block dark:hidden theme-toggle-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+        </button>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
+        
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-yellow-500/20 rounded-full blur-[100px] pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-500"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[100px] pointer-events-none opacity-0 dark:opacity-100 transition-opacity duration-500"></div>
+
+        <div class="absolute inset-0 z-0 opacity-[0.05] dark:opacity-[0.02]" 
+             style="background-image: linear-gradient(#999 1px, transparent 1px), linear-gradient(90deg, #999 1px, transparent 1px); background-size: 40px 40px;">
+        </div>
+
+        <div class="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 z-10">
+
+            <div class="group relative bg-white dark:bg-[#181818] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 transition-all duration-300 shadow-xl shadow-gray-200/50 dark:shadow-none hover:border-yellow-500/50 hover:shadow-2xl">
+                
+                <div class="absolute -top-10 -right-10 w-40 h-40 bg-yellow-500/20 blur-[50px] rounded-full transition-all duration-500 opacity-0 dark:opacity-100 group-hover:w-56 group-hover:h-56"></div>
+
+                <div class="flex justify-between items-start mb-6 relative">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg 
+                            bg-yellow-50 text-yellow-600 border border-yellow-200
+                            dark:bg-yellow-900/20 dark:text-yellow-500 dark:border-yellow-500/30">
+                            Au
+                        </div>
+                        <div>
+                            <h2 class="text-gray-900 dark:text-white font-bold text-xl tracking-wide">黄金 <span class="text-sm font-normal text-gray-400 ml-1">GOLD</span></h2>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-red-600 dark:text-red-500 font-mono font-bold text-lg leading-none">▲ 1.24%</div>
+                        <div class="text-[10px] text-gray-400 dark:text-gray-600 font-mono mt-1">+5.85 ¥/g</div>
+                    </div>
+                </div>
+
+                <div class="mb-8 relative">
+                    <div class="text-[10px] text-yellow-600 dark:text-yellow-500/80 mb-1 font-mono uppercase tracking-widest font-bold flex items-center gap-1">
+                        <span class="w-1 h-1 bg-yellow-600 dark:bg-yellow-500 rounded-full animate-pulse"></span>
+                        CNY Spot Price (Per Gram)
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-3xl md:text-4xl text-gray-400 dark:text-gray-500 font-light">¥</span>
+                        <span class="text-6xl md:text-7xl font-mono font-bold text-gray-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-2xl transition-colors">
+                            475<span class="text-4xl text-gray-300 dark:text-gray-500">.21</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800/50 backdrop-blur-sm transition-colors">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="border-r border-gray-200 dark:border-gray-800 pr-4">
+                            <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">Intl. (USD/oz)</div>
+                            <div class="text-xl font-mono text-gray-700 dark:text-gray-200 font-bold">$2,024.50</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">Intl. (USD/g)</div>
+                            <div class="text-xl font-mono text-gray-500 dark:text-gray-400">$65.10</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800/50 flex items-center justify-between">
+                         <span class="text-[10px] text-gray-400 dark:text-gray-600">24H Trend</span>
+                         <svg class="w-24 h-6 stroke-red-500 fill-none opacity-80" viewBox="0 0 100 30"><path d="M0 25 C 20 25, 30 10, 50 15 S 80 5, 100 2" stroke-width="2" stroke-linecap="round" /></svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="group relative bg-white dark:bg-[#181818] rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8 transition-all duration-300 shadow-xl shadow-gray-200/50 dark:shadow-none hover:border-cyan-500/50 hover:shadow-2xl">
+                
+                <div class="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/20 blur-[50px] rounded-full transition-all duration-500 opacity-0 dark:opacity-100 group-hover:w-56 group-hover:h-56"></div>
+
+                <div class="flex justify-between items-start mb-6 relative">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg 
+                            bg-cyan-50 text-cyan-600 border border-cyan-200
+                            dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-500/30">
+                            Ag
+                        </div>
+                        <div>
+                            <h2 class="text-gray-900 dark:text-white font-bold text-xl tracking-wide">白银 <span class="text-sm font-normal text-gray-400 ml-1">SILVER</span></h2>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-green-600 dark:text-green-500 font-mono font-bold text-lg leading-none">▼ 0.45%</div>
+                        <div class="text-[10px] text-gray-400 dark:text-gray-600 font-mono mt-1">-0.02 ¥/g</div>
+                    </div>
+                </div>
+
+                <div class="mb-8 relative">
+                    <div class="text-[10px] text-cyan-600 dark:text-cyan-500/80 mb-1 font-mono uppercase tracking-widest font-bold flex items-center gap-1">
+                        <span class="w-1 h-1 bg-cyan-600 dark:bg-cyan-500 rounded-full animate-pulse"></span>
+                        CNY Spot Price (Per Gram)
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-3xl md:text-4xl text-gray-400 dark:text-gray-500 font-light">¥</span>
+                        <span class="text-6xl md:text-7xl font-mono font-bold text-gray-900 dark:text-white tracking-tighter drop-shadow-sm dark:drop-shadow-2xl transition-colors">
+                            5<span class="text-4xl text-gray-300 dark:text-gray-500">.45</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800/50 backdrop-blur-sm transition-colors">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="border-r border-gray-200 dark:border-gray-800 pr-4">
+                            <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">Intl. (USD/oz)</div>
+                            <div class="text-xl font-mono text-gray-700 dark:text-gray-200 font-bold">$22.85</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">Intl. (USD/g)</div>
+                            <div class="text-xl font-mono text-gray-500 dark:text-gray-400">$0.73</div>
+                        </div>
+                    </div>
+                     <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-800/50 flex items-center justify-between">
+                         <span class="text-[10px] text-gray-400 dark:text-gray-600">24H Trend</span>
+                         <svg class="w-24 h-6 stroke-green-500 fill-none opacity-80" viewBox="0 0 100 30"><path d="M0 5 C 20 15, 40 10, 60 20 S 80 25, 100 28" stroke-width="2" stroke-linecap="round" /></svg>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // 1. 主题切换逻辑
+        const htmlEl = document.documentElement;
+        const iconSun = document.getElementById('icon-sun');
+        const iconMoon = document.getElementById('icon-moon');
+
+        function toggleTheme() {
+            // 给图标加一个旋转动画
+            iconSun.classList.add('rotate-icon');
+            iconMoon.classList.add('rotate-icon');
+
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+            } else {
+                htmlEl.classList.add('dark');
+            }
+
+            // 动画结束后移除旋转class
+            setTimeout(() => {
+                iconSun.classList.remove('rotate-icon');
+                iconMoon.classList.remove('rotate-icon');
+            }, 500);
+        }
+
+        // 2. 时钟逻辑
+        function updateClock(elementId, timeZone) {
+            const now = new Date();
+            const timeString = new Intl.DateTimeFormat('en-US', {
+                timeZone: timeZone, hour: '2-digit', minute: '2-digit', hour12: false
+            }).format(now);
+            const prefix = elementId.includes('ny') ? 'NY ' : elementId.includes('london') ? 'LDN ' : 'BJ ';
+            document.getElementById(elementId).innerText = prefix + timeString;
+        }
+        setInterval(() => {
+            updateClock('clock-ny', 'America/New_York');
+            updateClock('clock-london', 'Europe/London');
+            updateClock('clock-bj', 'Asia/Shanghai');
+        }, 1000);
+    </script>
+</body>
+</html>

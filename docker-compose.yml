@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  gs-watcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gs-watcher
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/.data
+    environment:
+      # Feishu Webhook - REQUIRED
+      - NUXT_FEISHU_WEBHOOK=${NUXT_FEISHU_WEBHOOK}
+      
+      # Monitoring configuration
+      - NUXT_MONITOR_SCAN_INTERVAL=${NUXT_MONITOR_SCAN_INTERVAL:-60000}
+      - NUXT_MONITOR_SYMBOLS=${NUXT_MONITOR_SYMBOLS:-gds_AUTD,gds_AGTD,hf_XAU}
+      
+      # Thresholds
+      - NUXT_THRESHOLD_GDS_AUTD=${NUXT_THRESHOLD_GDS_AUTD:-5}
+      - NUXT_THRESHOLD_GDS_AGTD=${NUXT_THRESHOLD_GDS_AGTD:-50}
+      - NUXT_THRESHOLD_HF_XAU=${NUXT_THRESHOLD_HF_XAU:-20}
+      - NUXT_THRESHOLD_HF_XAG=${NUXT_THRESHOLD_HF_XAG:-0.5}
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  data:
+    driver: local
