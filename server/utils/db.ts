@@ -14,10 +14,9 @@ export async function getDatabase(): Promise<any> {
 
   // Initialize SQL.js
   if (!SQL) {
-    // In production, wasm file is in node_modules/sql.js/dist
-    const wasmBinary = fs.readFileSync(
-      path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm')
-    )
+    // In production, wasm file is copied to /app root
+    const wasmPath = path.join(process.cwd(), 'sql-wasm.wasm')
+    const wasmBinary = fs.readFileSync(wasmPath)
     SQL = await initSqlJs({ wasmBinary })
   }
 
