@@ -27,7 +27,7 @@
           {{ trendPercent > 0 ? '▲' : '▼' }} {{ formatNumber(Math.abs(trendPercent), 2) }}%
         </div>
         <div class="text-[10px] text-gray-400 dark:text-gray-600 font-mono mt-1">
-          {{ trendPercent > 0 ? '+' : '' }}{{ formatNumber(currentPrice - previousPrice, 2) }} ¥/g
+          {{ trendPercent > 0 ? '+' : '' }}{{ formatNumber(priceChange, 2) }} ¥/g
         </div>
       </div>
     </div>
@@ -55,15 +55,15 @@
     <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800/50 backdrop-blur-sm transition-colors">
       <div class="grid grid-cols-2 gap-4">
         <div class="border-r border-gray-200 dark:border-gray-800 pr-4">
-          <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">High</div>
+          <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">{{ metal === 'gold' ? 'NY Gold' : 'NY Silver' }}</div>
           <div class="text-xl font-mono text-gray-700 dark:text-gray-200 font-bold">
-            {{ stats.high > 0 ? formatCurrency(stats.high, 'CNY', 2) : '--' }}
+            {{ newyorkPrice > 0 ? formatCurrency(newyorkPrice, 'USD', 2) + '/oz' : '--' }}
           </div>
         </div>
         <div>
-          <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">Low</div>
+          <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-1 font-mono uppercase">{{ metal === 'gold' ? 'LDN Gold' : 'LDN Silver' }}</div>
           <div class="text-xl font-mono text-gray-500 dark:text-gray-400">
-            {{ stats.low > 0 ? formatCurrency(stats.low, 'CNY', 2) : '--' }}
+            {{ londonPrice > 0 ? formatCurrency(londonPrice, 'USD', 2) + '/oz' : '--' }}
           </div>
         </div>
       </div>
@@ -81,9 +81,11 @@
 interface PriceData {
   current?: number
   previous?: number
+  change?: number  // 涨跌金额 (¥/g)
   high?: number
   low?: number
-  avg?: number
+  london?: number  // 伦敦金/银 ($/oz)
+  newyork?: number // 纽约金/银 ($/oz)
   timestamp?: string
   history?: Array<{ value: number; timestamp: string }>
 }
@@ -101,6 +103,9 @@ const { formatCurrency, calculatePercentageChange, formatNumber } = usePriceForm
 
 const currentPrice = computed(() => props.data?.current ?? 0)
 const previousPrice = computed(() => props.data?.previous ?? 0)
+const priceChange = computed(() => props.data?.change ?? 0)
+const newyorkPrice = computed(() => props.data?.newyork ?? 0)
+const londonPrice = computed(() => props.data?.london ?? 0)
 
 const trendPercent = computed(() => 
   calculatePercentageChange(currentPrice.value, previousPrice.value)
@@ -112,8 +117,7 @@ const formattedPrice = computed(() =>
 
 const stats = computed(() => ({
   high: props.data?.high ?? null,
-  low: props.data?.low ?? null,
-  avg: props.data?.avg ?? null
+  low: props.data?.low ?? null
 }))
 
 const historyData = computed(() => {

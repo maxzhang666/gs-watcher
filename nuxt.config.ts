@@ -31,12 +31,14 @@ export default defineNuxtConfig({
     
     monitor: {
       scanInterval: parseInt(process.env.NUXT_MONITOR_SCAN_INTERVAL || '60000'),
-      symbols: (process.env.NUXT_MONITOR_SYMBOLS || 'gds_AUTD,gds_AGTD,hf_XAU').split(','),
+      symbols: (process.env.NUXT_MONITOR_SYMBOLS || 'gds_AUTD,gds_AGTD,hf_XAU,hf_XAG,hf_GC,hf_SI').split(','),
       thresholds: {
         gds_AUTD: parseFloat(process.env.NUXT_THRESHOLD_GDS_AUTD || '5'),
         gds_AGTD: parseFloat(process.env.NUXT_THRESHOLD_GDS_AGTD || '50'),
         hf_XAU: parseFloat(process.env.NUXT_THRESHOLD_HF_XAU || '20'),
         hf_XAG: parseFloat(process.env.NUXT_THRESHOLD_HF_XAG || '0.5'),
+        hf_GC: parseFloat(process.env.NUXT_THRESHOLD_HF_GC || '20'),
+        hf_SI: parseFloat(process.env.NUXT_THRESHOLD_HF_SI || '0.5'),
       }
     },
     
