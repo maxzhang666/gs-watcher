@@ -28,6 +28,9 @@ WORKDIR /app
 # Copy built application from builder
 COPY --from=builder /app/.output /app/.output
 
+# Copy sql.js wasm files to the correct location
+COPY --from=builder /app/node_modules/sql.js/dist/*.wasm /app/.output/server/node_modules/sql.js/dist/
+
 # Create .data directory for SQLite
 RUN mkdir -p /app/.data && chown -R node:node /app/.data
 

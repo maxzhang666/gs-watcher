@@ -25,6 +25,18 @@ export default defineNuxtConfig({
     }
   },
   
+  nitro: {
+    externals: {
+      inline: ['sql.js']
+    },
+    publicAssets: [
+      {
+        baseURL: 'sql.js',
+        dir: 'node_modules/sql.js/dist'
+      }
+    ]
+  },
+  
   runtimeConfig: {
     // Private keys (server-side only)
     feishuWebhook: process.env.NUXT_FEISHU_WEBHOOK || '',
