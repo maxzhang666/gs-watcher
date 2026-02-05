@@ -23,6 +23,9 @@ RUN pnpm build
 # Production stage
 FROM base AS production
 
+# Install build dependencies for better-sqlite3
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
 # Copy package files and install production dependencies
