@@ -25,12 +25,6 @@ export default defineNuxtConfig({
     }
   },
   
-  nitro: {
-    externals: {
-      external: ['better-sqlite3']
-    }
-  },
-  
   runtimeConfig: {
     // Private keys (server-side only)
     feishuWebhook: process.env.NUXT_FEISHU_WEBHOOK || '',

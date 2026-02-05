@@ -1,13 +1,13 @@
-import Database from 'better-sqlite3'
+import { createClient } from '@libsql/client'
 import { consola } from 'consola'
 import path from 'path'
 import fs from 'fs'
 
-let db: Database.Database | null = null
+let client: ReturnType<typeof createClient> | null = null
 
-export function getDatabase(): Database.Database {
-  if (db) {
-    return db
+export function getDatabase() {
+  if (client) {
+    return client
   }
 
   // Ensure .data directory exists
@@ -19,20 +19,22 @@ export function getDatabase(): Database.Database {
   const dbPath = path.join(dataDir, 'prices.db')
   consola.info(`Initializing database at ${dbPath}`)
 
-  db = new Database(dbPath)
+  client = createClient({
+    url: `file:${dbPath}`
+  })
   
   initializeTables()
   
   consola.success('Database initialized successfully')
   
-  return db
+  return client
 }
 
-function initializeTables(): void {
-  if (!db) return
+async function initializeTables(): Promise<void> {
+  if (!client) return
   
   // Create price_history table
-  db.exec(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS price_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       symbol TEXT NOT NULL,
@@ -45,13 +47,13 @@ function initializeTables(): void {
   `)
   
   // Create index for efficient queries
-  db.exec(`
+  await client.execute(`
     CREATE INDEX IF NOT EXISTS idx_symbol_time 
     ON price_history(symbol, created_at)
   `)
   
   // Create alert_logs table for cooldown tracking
-  db.exec(`
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS alert_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       alert_type TEXT NOT NULL,
@@ -64,22 +66,22 @@ function initializeTables(): void {
   consola.info('Database tables initialized')
 }
 
-export function getRecentPrices(symbol: string, limit: number = 5): Array<{ price: number, created_at: number }> {
-  if (!db) return []
+export async function getRecentPrices(symbol: string, limit: number = 5): Promise<Array<{ price: number, created_at: number }>> {
+  if (!client) return []
   
-  const stmt = db.prepare(`
-    SELECT price, created_at 
-    FROM price_history 
-    WHERE symbol = ? 
-    ORDER BY created_at DESC 
-    LIMIT ?
-  `)
+  const result = await client.execute({
+    sql: `SELECT price, created_at FROM price_history WHERE symbol = ? ORDER BY created_at DESC LIMIT ?`,
+    args: [symbol, limit]
+  })
   
-  return stmt.all(symbol, limit) as Array<{ price: number, created_at: number }>
+  return result.rows.map(row => ({
+    price: row.price as number,
+    created_at: row.created_at as number
+  }))
 }
 
-export function getTodayRange(symbol: string): { max: number | null, min: number | null } {
-  if (!db) return { max: null, min: null }
+export async function getTodayRange(symbol: string): Promise<{ max: number | null, min: number | null }> {
+  if (!client) return { max: null, min: null }
   
   // Get start of today in UTC+8 timezone
   const now = new Date()
@@ -88,100 +90,100 @@ export function getTodayRange(symbol: string): { max: number | null, min: number
   todayStart.setUTCHours(0, 0, 0, 0)
   const todayStartTimestamp = todayStart.getTime() - utc8Offset
   
-  const stmt = db.prepare(`
-    SELECT MAX(price) as max, MIN(price) as min
-    FROM price_history
-    WHERE symbol = ? AND created_at >= ?
-  `)
+  const result = await client.execute({
+    sql: `SELECT MAX(price) as max, MIN(price) as min FROM price_history WHERE symbol = ? AND created_at >= ?`,
+    args: [symbol, todayStartTimestamp]
+  })
   
-  const result = stmt.get(symbol, todayStartTimestamp) as { max: number | null, min: number | null } | undefined
+  if (result.rows.length === 0) {
+    return { max: null, min: null }
+  }
   
-  return result || { max: null, min: null }
+  const row = result.rows[0]
+  return { 
+    max: row.max as number | null, 
+    min: row.min as number | null 
+  }
 }
 
-export function checkAlertCooldown(
+export async function checkAlertCooldown(
   alertType: string, 
   symbol: string, 
   cooldownMs: number = 15 * 60 * 1000
-): boolean {
-  if (!db) return true
+): Promise<boolean> {
+  if (!client) return true
   
-  const stmt = db.prepare(`
-    SELECT last_sent_at 
-    FROM alert_logs 
-    WHERE alert_type = ? AND symbol = ?
-  `)
+  const result = await client.execute({
+    sql: `SELECT last_sent_at FROM alert_logs WHERE alert_type = ? AND symbol = ?`,
+    args: [alertType, symbol]
+  })
   
-  const result = stmt.get(alertType, symbol) as { last_sent_at: number } | undefined
-  
-  if (!result) {
+  if (result.rows.length === 0) {
     return true // No record, can send
   }
   
-  const timeSinceLastAlert = Date.now() - result.last_sent_at
+  const lastSentAt = result.rows[0].last_sent_at as number
+  const timeSinceLastAlert = Date.now() - lastSentAt
   return timeSinceLastAlert >= cooldownMs
 }
 
-export function insertPrice(record: {
+export async function insertPrice(record: {
   symbol: string
   price: number
   price_open: number | null
   price_high: number | null
   price_low: number | null
   created_at: number
-}): void {
-  if (!db) return
+}): Promise<void> {
+  if (!client) return
   
-  const stmt = db.prepare(`
-    INSERT INTO price_history (symbol, price, price_open, price_high, price_low, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `)
-  
-  stmt.run(
-    record.symbol,
-    record.price,
-    record.price_open,
-    record.price_high,
-    record.price_low,
-    record.created_at
-  )
+  await client.execute({
+    sql: `INSERT INTO price_history (symbol, price, price_open, price_high, price_low, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [
+      record.symbol,
+      record.price,
+      record.price_open,
+      record.price_high,
+      record.price_low,
+      record.created_at
+    ]
+  })
 }
 
-export function updateAlertLog(alertType: string, symbol: string): void {
-  if (!db) return
+export async function updateAlertLog(alertType: string, symbol: string): Promise<void> {
+  if (!client) return
   
-  const stmt = db.prepare(`
-    INSERT OR REPLACE INTO alert_logs (alert_type, symbol, last_sent_at)
-    VALUES (?, ?, ?)
-  `)
-  
-  stmt.run(alertType, symbol, Date.now())
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO alert_logs (alert_type, symbol, last_sent_at) VALUES (?, ?, ?)`,
+    args: [alertType, symbol, Date.now()]
+  })
 }
 
-export function getRecordCount(): number {
-  if (!db) return 0
+export async function getRecordCount(): Promise<number> {
+  if (!client) return 0
   
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM price_history')
-  const result = stmt.get() as { count: number }
+  const result = await client.execute('SELECT COUNT(*) as count FROM price_history')
   
-  return result.count
+  if (result.rows.length === 0) {
+    return 0
+  }
+  
+  return result.rows[0].count as number
 }
 
-export function getAllPrices(): Array<{ symbol: string, price: number, timestamp: string }> {
+export async function getAllPrices(): Promise<Array<{ symbol: string, price: number, timestamp: string }>> {
   const database = getDatabase()
   
-  const stmt = database.prepare(`
+  const result = await database.execute(`
     SELECT symbol, price, created_at 
     FROM price_history 
     ORDER BY created_at DESC 
     LIMIT 200
   `)
   
-  const rows = stmt.all() as Array<{ symbol: string, price: number, created_at: number }>
-  
-  return rows.map(row => ({
-    symbol: row.symbol,
-    price: row.price,
-    timestamp: new Date(row.created_at).toISOString()
+  return result.rows.map(row => ({
+    symbol: row.symbol as string,
+    price: row.price as number,
+    timestamp: new Date(row.created_at as number).toISOString()
   }))
 }

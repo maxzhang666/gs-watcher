@@ -10,10 +10,9 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "better-sqlite3": "^12.6.2",
+    "@libsql/client": "^0.17.0",
     "consola": "^3.4.2",
     "nuxt": "^4.3.0",
-    "sql.js": "^1.13.0",
     "vue": "^3.5.27",
     "vue-router": "^4.6.4"
   },
