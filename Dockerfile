@@ -34,9 +34,12 @@ RUN pnpm install --prod --frozen-lockfile
 
 # Copy built application from builder
 COPY --from=builder /app/.output /app/.output
+
+# Create symlink so node_modules can be found
+RUN ln -s /app/node_modules /app/.output/server/node_modules
     
 # Create .data directory for SQLite
-RUN mkdir -p /app/.data && chown -R node:node /app/.data /app/node_modules
+RUN mkdir -p /app/.data && chown -R node:node /app/.data /app/node_modules /app/.output
 
 # Use non-root user
 USER node
