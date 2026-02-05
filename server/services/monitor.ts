@@ -20,27 +20,28 @@ export async function analyzePrice(options: AnalyzeOptions): Promise<Alert[]> {
   
   try {
     // Check fluctuation
-    const fluctuationAlert = checkFluctuation(symbol, currentPrice, threshold)
+    const fluctuationAlert = await checkFluctuation(symbol, currentPrice, threshold)
     if (fluctuationAlert) alerts.push(fluctuationAlert)
     
     // Check peak/valley
-    const peakValleyAlerts = checkPeakValley(symbol, currentPrice)
+    const peakValleyAlerts = await checkPeakValley(symbol, currentPrice)
     alerts.push(...peakValleyAlerts)
     
     // Check trend
-    const trendAlert = checkTrend(symbol, currentPrice)
+    const trendAlert = await checkTrend(symbol, currentPrice)
     if (trendAlert) alerts.push(trendAlert)
     
     // Apply cooldown filter and update logs
-    const filteredAlerts = alerts.filter(alert => {
-      const canSend = checkAlertCooldown(alert.type, alert.symbol)
+    const filteredAlerts: Alert[] = []
+    for (const alert of alerts) {
+      const canSend = await checkAlertCooldown(alert.type, alert.symbol)
       if (canSend) {
-        updateAlertLog(alert.type, alert.symbol)
-        return true
+        await updateAlertLog(alert.type, alert.symbol)
+        filteredAlerts.push(alert)
+      } else {
+        consola.debug(`Alert ${alert.type} for ${alert.symbol} suppressed by cooldown`)
       }
-      consola.debug(`Alert ${alert.type} for ${alert.symbol} suppressed by cooldown`)
-      return false
-    })
+    }
     
     return filteredAlerts
   } catch (error) {
@@ -49,8 +50,8 @@ export async function analyzePrice(options: AnalyzeOptions): Promise<Alert[]> {
   }
 }
 
-function checkFluctuation(symbol: string, currentPrice: number, threshold: number): Alert | null {
-  const recent = getRecentPrices(symbol, 1)
+async function checkFluctuation(symbol: string, currentPrice: number, threshold: number): Promise<Alert | null> {
+  const recent = await getRecentPrices(symbol, 1)
   
   if (recent.length === 0 || !recent[0]) {
     // No previous data, cannot detect fluctuation
@@ -74,9 +75,9 @@ function checkFluctuation(symbol: string, currentPrice: number, threshold: numbe
   return null
 }
 
-function checkPeakValley(symbol: string, currentPrice: number): Alert[] {
+async function checkPeakValley(symbol: string, currentPrice: number): Promise<Alert[]> {
   const alerts: Alert[] = []
-  const todayRange = getTodayRange(symbol)
+  const todayRange = await getTodayRange(symbol)
   
   if (todayRange.max !== null && currentPrice > todayRange.max) {
     alerts.push({
@@ -99,8 +100,8 @@ function checkPeakValley(symbol: string, currentPrice: number): Alert[] {
   return alerts
 }
 
-function checkTrend(symbol: string, currentPrice: number): Alert | null {
-  const recent = getRecentPrices(symbol, 5)
+async function checkTrend(symbol: string, currentPrice: number): Promise<Alert | null> {
+  const recent = await getRecentPrices(symbol, 5)
   
   if (recent.length < 4) {
     // Need at least 4 historical + 1 current = 5 total for trend detection
